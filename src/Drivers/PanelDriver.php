@@ -9,13 +9,13 @@ use AlirezaMalekei\PeykadSms\Contracts\SmsDriver;
 use AlirezaMalekei\PeykadSms\Exceptions\SmsException;
 use AlirezaMalekei\PeykadSms\Responses\SmsResponse;
 
-readonly class PanelDriver implements SmsDriver
+class PanelDriver implements SmsDriver
 {
     public function __construct(
-        private string $baseUrl,
-        private string $endpoint,
-        private string $apiKey,
-        private ?string $lineNumber = null
+        private readonly string $baseUrl,
+        private readonly string $endpoint,
+        private readonly string $apiKey,
+        private readonly ?string $lineNumber = null
     ) {}
 
     /**
