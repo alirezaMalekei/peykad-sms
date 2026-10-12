@@ -4,4 +4,4 @@ composer.lock
 .phpunit.result.cache
 .idea
 .AGENTS.md
-.agents
+/.agents

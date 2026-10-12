@@ -27,7 +27,7 @@ Send SMS in Laravel with support for multiple drivers. Send single, bulk and sch
 ## Installation
 
 ```bash
-composer require alireza_malekei/peykad-sms
+composer require alireza_malekei/peykad-sms:^2
 php artisan vendor:publish --tag=sms-config
 ```
 
