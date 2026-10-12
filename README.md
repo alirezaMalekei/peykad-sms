@@ -1,12 +1,26 @@
 # Peykad SMS
 
-Send SMS in Laravel with support for multiple drivers.
+Send SMS in Laravel with support for multiple drivers. Send single, bulk and scheduled messages, and check your wallet with the same API key.
+
+## Contents
+
+- [Compatibility](#compatibility)
+- [Installation](#installation)
+- [Getting an API Key](#getting-an-api-key)
+- [Setting the API Key](#setting-the-api-key)
+- [Usage](#usage)
+- [The `send` Response](#the-send-response)
+- [Getting the Wallet](#getting-the-wallet)
+- [Adding a Custom Driver](#adding-a-custom-driver)
+- [Error Handling](#error-handling)
+- [Testing](#testing)
+- [License](#license)
 
 ## Compatibility
 
 | Laravel | PHP       |
 |---------|-----------|
-| 10.x    | 8.1 - 8.3 |
+| 10.x    | 8.1 - 8.4 |
 | 11.x    | 8.2+      |
 | 12.x    | 8.2+      |
 
@@ -31,7 +45,7 @@ You can provide the key in one of three ways.
 
 Add the key to your `.env` file:
 
-```
+```dotenv
 SMS_DRIVER=panel
 SMS_PANEL_URL=https://api.example.com
 SMS_PANEL_ENDPOINT=/api/v1/send
@@ -84,7 +98,8 @@ Values passed at runtime take priority over `.env` and config values. Any option
 
 If `SMS_PANEL_API_KEY` or `SMS_PANEL_URL` is missing, an `SmsException` is thrown before any request is sent.
 
-**Warning:** Never hard-code the key or commit it to Git, and do not commit your `.env` file.
+> **Warning:** Never hard-code the key or commit it to Git, and do not commit your `.env` file.
+
 ## Usage
 
 ```php
@@ -113,8 +128,6 @@ Sms::driver('panel')->send('09138332910', 'Hi');
 
 ## The `send` Response
 
-The `send` method returns an `SmsResponse` object:
-
 ```php
 $result = Sms::send('09138332910', 'Hello');
 
@@ -126,44 +139,112 @@ $result->toArray();       // raw API response
 
 If sending fails (an HTTP error, or `success` is `false`), an `SmsException` is thrown.
 
-## Using a Different API Key at Runtime
+## Getting the Wallet
 
-If your project uses multiple keys (for example, one per customer), you can pass the values at send time:
+Check how much credit your account has left. The wallet uses a separate `WalletDriver`, service, config block and facade.
 
-```php
-Sms::panel([
-    'api_key'     => $customer->sms_api_key,
-    'line_number' => $customer->sms_line,
-])->send('09138332910', 'Hello');
+Wallet requests always use **GET with no payload** and share `SMS_PANEL_URL` and `SMS_PANEL_API_KEY` with SMS sending. The only required wallet setting is the endpoint:
+
+```dotenv
+SMS_WALLET_ENDPOINT=/api/v1/wallet
 ```
 
-**Warning:** Never hard-code the key or commit it to Git, and do not commit your `.env` file.
+### Optional settings
+
+| Variable                     | Example value | Description                                                                 |
+|------------------------------|---------------|-----------------------------------------------------------------------------|
+| `SMS_WALLET_KEY`             | `data`        | Where the wallet record is in the JSON response. Empty means the whole response. |
+| `SMS_WALLET_BALANCE_KEY`     | `balance`     | Balance field inside the record. Dot notation is supported.                 |
+
+### Usage
+
+```php
+use AlirezaMalekei\PeykadSms\Facades\Wallet;
+
+$wallet = Wallet::get();
+
+// Use a specific key, for example one per customer
+$wallet = Wallet::get(['api_key' => $customer->sms_api_key]);
+
+$wallet->balance();        // 125000, or null if the balance field is missing
+$wallet->toArray();        // the wallet record
+$wallet->get('currency');  // a single field (dot notation supported)
+$wallet->raw();            // raw API response
+```
+
+An `SmsException` is thrown if the endpoint is not configured, the request fails or times out, the API returns `success: false`, or the wallet record is not found in the response.
+
+If a class also imports your own `Wallet` model, alias one of them:
+
+```php
+use AlirezaMalekei\PeykadSms\Facades\Wallet as SmsWallet;
+```
 
 ## Adding a Custom Driver
+
+Register your driver with `extend`:
 
 ```php
 Sms::extend('mygateway', fn () => new MyGatewayDriver());
 ```
 
-Your class must implement `AlirezaMalekei\PeykadSms\Contracts\SmsDriver`.
+Your class must implement `AlirezaMalekei\PeykadSms\Contracts\SmsDriver`:
+
+```php
+use AlirezaMalekei\PeykadSms\Contracts\SmsDriver;
+use AlirezaMalekei\PeykadSms\Responses\SmsResponse;
+
+class MyGatewayDriver implements SmsDriver
+{
+    public function send(string|array $to, string $text, array $options = []): SmsResponse
+    {
+        // call your gateway here
+
+        return new SmsResponse(true, 'sent', 'TRACKING-CODE');
+    }
+}
+```
+
+Custom drivers do not need anything for the wallet. `Wallet::get()` does not use drivers.
 
 ## Error Handling
 
 ```php
 use AlirezaMalekei\PeykadSms\Exceptions\SmsException;
+use Illuminate\Http\Client\ConnectionException;
 
 try {
     Sms::send('09138332910', 'Hello');
 } catch (SmsException $e) {
+    // missing configuration, HTTP error, or success was false
+    report($e);
+} catch (ConnectionException $e) {
+    // the panel could not be reached (DNS, timeout, refused connection)
     report($e);
 }
 ```
+
+`Wallet::get()` converts connection problems into `SmsException`, so it only needs the first `catch`.
+
+If you send from a queued job, set a job timeout so a slow provider cannot block your workers.
 
 ## Testing
 
 ```bash
 composer install
 composer test
+```
+
+In your own application, set `SMS_DRIVER=log` locally so no real messages are sent, or fake the HTTP calls:
+
+```php
+Http::fake([
+    '*' => Http::response([
+        'success'       => true,
+        'message'       => 'success',
+        'tracking_code' => 'ABC123',
+    ], 200),
+]);
 ```
 
 ## License

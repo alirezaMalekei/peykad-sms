@@ -11,4 +11,10 @@ return [
             'line_number' => env('SMS_PANEL_LINE', 1000002121),
         ],
     ],
+
+    'wallet' => [
+        'endpoint'        => env('SMS_WALLET_ENDPOINT'),
+        'record_key'      => env('SMS_WALLET_KEY'),
+        'balance_key'     => env('SMS_WALLET_BALANCE_KEY', 'balance'),
+    ],
 ];
