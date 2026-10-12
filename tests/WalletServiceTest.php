@@ -36,18 +36,23 @@ class WalletServiceTest extends TestCase
         $this->assertSame($body, $wallet->raw());
     }
 
-    public function test_it_extracts_the_record_and_nested_balance(): void
+    public function test_it_unwraps_the_data_node_when_present(): void
     {
-        $this->configure(['record_key' => 'data', 'balance_key' => 'account.credit']);
+        $this->configure();
         Http::fake(['*' => Http::response([
             'success' => true,
-            'data'    => ['id' => 9, 'account' => ['credit' => '2500.5']],
+            'message' => 'کیف پول دریافت شد',
+            'data'    => ['id' => 9, 'balance' => 2500.5, 'panel_id' => 134],
         ], 200)]);
 
         $wallet = Wallet::get();
 
-        $this->assertSame(['id' => 9, 'account' => ['credit' => '2500.5']], $wallet->toArray());
+        $this->assertSame(
+            ['id' => 9, 'balance' => 2500.5, 'panel_id' => 134],
+            $wallet->toArray()
+        );
         $this->assertSame(2500.5, $wallet->balance());
+        $this->assertSame(134, $wallet->get('panel_id'));
     }
 
     public function test_balance_is_null_when_field_missing(): void
@@ -118,15 +123,6 @@ class WalletServiceTest extends TestCase
         }
     }
 
-    public function test_it_throws_when_the_record_is_not_found(): void
-    {
-        $this->configure(['record_key' => 'data']);
-        Http::fake(['*' => Http::response(['success' => true, 'other' => 1], 200)]);
-
-        $this->expectException(SmsException::class);
-        Wallet::get();
-    }
-
     public function test_the_wallet_request_never_touches_the_sms_driver(): void
     {
         $this->configure();
@@ -192,5 +188,4 @@ class WalletServiceTest extends TestCase
             && $r->body() === ''
             && $r->hasHeader('Authorization', 'panel-key'));
     }
-
 }

@@ -13,8 +13,6 @@ return [
     ],
 
     'wallet' => [
-        'endpoint'        => env('SMS_WALLET_ENDPOINT'),
-        'record_key'      => env('SMS_WALLET_KEY'),
-        'balance_key'     => env('SMS_WALLET_BALANCE_KEY', 'balance'),
+        'endpoint' => env('SMS_WALLET_ENDPOINT'),
     ],
 ];

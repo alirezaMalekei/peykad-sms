@@ -7,9 +7,8 @@ use AlirezaMalekei\PeykadSms\Exceptions\SmsException;
 class WalletResponse
 {
     public function __construct(
-        private readonly array  $record,
-        private readonly array  $raw = [],
-        private readonly string $balanceKey = 'balance',
+        private readonly array $record,
+        private readonly array $raw = [],
     ) {}
 
     public static function fromArray(array $data): self
@@ -25,23 +24,12 @@ class WalletResponse
             );
         }
 
-        $recordKey  = config('sms.wallet.record_key');   // null = whole payload
-        $balanceKey = (string) config('sms.wallet.balance_key', 'balance');
+        // The wallet record is the "data" node when present, otherwise the whole payload.
+        $record = is_array($data['data'] ?? null) && $data['data'] !== []
+            ? $data['data']
+            : $data;
 
-        // Resolve the wallet record (null/empty record_key => whole payload).
-        if ($recordKey === null || $recordKey === '') {
-            $record = $data;
-        } else {
-            $record = data_get($data, $recordKey);
-
-            if (! is_array($record) || $record === []) {
-                throw new SmsException(
-                    "رکورد کیف پول در پاسخ پنل پیدا نشد. کلید «{$recordKey}» را بررسی کنید."
-                );
-            }
-        }
-
-        return new self($record, $data, $balanceKey);
+        return new self($record, $data);
     }
 
     /** مقدار یک فیلد از رکورد کیف پول (dot notation پشتیبانی می‌شود) */
@@ -53,7 +41,7 @@ class WalletResponse
     /** موجودی کیف پول به صورت عدد، یا null اگر موجود نباشد */
     public function balance(): int|float|null
     {
-        $value = $this->get($this->balanceKey);
+        $value = $this->get('balance');
 
         return is_numeric($value) ? $value + 0 : null;
     }
