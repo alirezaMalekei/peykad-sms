@@ -15,11 +15,13 @@ class WalletDriver
         private readonly string $apiKey,
     ) {}
 
-    public function get(?string $recordKey = null, string $balanceKey = 'balance'): WalletResponse
+    public function get(): WalletResponse
     {
         try {
             $response = Http::baseUrl($this->baseUrl)
-                ->withHeaders(['Authorization' => $this->apiKey])
+                ->withHeaders([
+                    'Authorization' => $this->apiKey
+                ])
                 ->acceptJson()
                 ->get($this->endpoint);
         } catch (ConnectionException $e) {
@@ -32,6 +34,6 @@ class WalletDriver
             throw new SmsException("Wallet request failed (HTTP {$response->status()}).");
         }
 
-        return WalletResponse::fromArray($data, $recordKey, $balanceKey);
+        return WalletResponse::fromArray($data);
     }
 }

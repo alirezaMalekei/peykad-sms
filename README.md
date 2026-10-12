@@ -149,13 +149,6 @@ Wallet requests always use **GET with no payload** and share `SMS_PANEL_URL` and
 SMS_WALLET_ENDPOINT=/api/v1/wallet
 ```
 
-### Optional settings
-
-| Variable                     | Example value | Description                                                                 |
-|------------------------------|---------------|-----------------------------------------------------------------------------|
-| `SMS_WALLET_KEY`             | `data`        | Where the wallet record is in the JSON response. Empty means the whole response. |
-| `SMS_WALLET_BALANCE_KEY`     | `balance`     | Balance field inside the record. Dot notation is supported.                 |
-
 ### Usage
 
 ```php
@@ -166,10 +159,10 @@ $wallet = Wallet::get();
 // Use a specific key, for example one per customer
 $wallet = Wallet::get(['api_key' => $customer->sms_api_key]);
 
-$wallet->balance();        // 125000, or null if the balance field is missing
-$wallet->toArray();        // the wallet record
-$wallet->get('currency');  // a single field (dot notation supported)
-$wallet->raw();            // raw API response
+$wallet->balance();              // 50000, or null if the balance field is missing
+$wallet->toArray();              // the wallet record
+$wallet->get('panel.name');      // a single field (dot notation supported)
+$wallet->raw();                  // raw API response (includes success, message, data)
 ```
 
 An `SmsException` is thrown if the endpoint is not configured, the request fails or times out, the API returns `success: false`, or the wallet record is not found in the response.

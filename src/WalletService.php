@@ -9,7 +9,9 @@ use AlirezaMalekei\PeykadSms\Responses\WalletResponse;
 
 class WalletService
 {
-    public function __construct(private readonly Repository $config) {}
+    public function __construct(
+        private readonly Repository $config
+    ) {}
 
     public function get(array $overrides = []): WalletResponse
     {
@@ -31,9 +33,6 @@ class WalletService
             apiKey:   $config['api_key'],
         );
 
-        return $driver->get(
-            $config['record_key'] ?? null,
-            $config['balance_key'] ?? 'balance',
-        );
+        return $driver->get();
     }
 }
