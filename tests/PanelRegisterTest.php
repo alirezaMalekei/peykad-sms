@@ -157,7 +157,7 @@ class PanelRegisterTest extends TestCase
             && $request->hasHeader('Authorization', 'customer-key'));
     }
 
-    public function test_registration_settings_do_not_replace_the_shared_panel_connection(): void
+    public function test_registration_key_takes_priority_while_the_base_url_stays_shared(): void
     {
         config()->set('sms.registration.api_key', 'registration-key');
         config()->set('sms.registration.base_url', 'https://unused.test');
@@ -166,7 +166,74 @@ class PanelRegisterTest extends TestCase
         Panel::register($this->userData());
 
         Http::assertSent(fn (Request $request) => $request->url() === 'https://panel.test/register'
-            && $request->hasHeader('Authorization', 'panel-key'));
+            && $request->hasHeader('Authorization', 'registration-key'));
+    }
+
+    public function test_a_runtime_key_overrides_the_registration_key_for_one_call_only(): void
+    {
+        config()->set('sms.registration.api_key', 'registration-key');
+        Http::fake(['*' => Http::response(['success' => true], 201)]);
+
+        Panel::register($this->userData(), ['api_key' => 'runtime-key']);
+        Panel::register($this->userData());
+
+        Http::assertSentCount(2);
+        Http::assertSent(fn (Request $request) => $request->hasHeader('Authorization', 'runtime-key'));
+        Http::assertSent(fn (Request $request) => $request->hasHeader('Authorization', 'registration-key'));
+        $this->assertSame('registration-key', config('sms.registration.api_key'));
+        $this->assertSame('panel-key', config('sms.drivers.panel.api_key'));
+    }
+
+    public function test_a_null_registration_key_falls_back_to_the_sms_panel_key(): void
+    {
+        config()->set('sms.registration.api_key', null);
+        Http::fake(['*' => Http::response(['success' => true], 201)]);
+
+        Panel::register($this->userData());
+
+        Http::assertSent(fn (Request $request) => $request->hasHeader('Authorization', 'panel-key'));
+    }
+
+    public function test_a_registration_key_works_without_an_sms_panel_key(): void
+    {
+        config()->set('sms.drivers.panel.api_key', null);
+        config()->set('sms.registration.api_key', 'registration-key');
+        Http::fake(['*' => Http::response(['success' => true], 201)]);
+
+        $this->assertTrue(Panel::register($this->userData())->isSuccessful());
+
+        Http::assertSent(fn (Request $request) => $request->hasHeader('Authorization', 'registration-key'));
+    }
+
+    public function test_missing_registration_and_sms_keys_fail_before_sending(): void
+    {
+        config()->set('sms.drivers.panel.api_key', null);
+        config()->set('sms.registration.api_key', null);
+        Http::fake();
+
+        $this->expectException(SmsException::class);
+        $this->expectExceptionMessage('api_key');
+
+        try {
+            Panel::register($this->userData());
+        } finally {
+            Http::assertNothingSent();
+        }
+    }
+
+    public function test_a_null_runtime_key_does_not_silently_use_a_configured_key(): void
+    {
+        config()->set('sms.registration.api_key', 'registration-key');
+        Http::fake();
+
+        $this->expectException(SmsException::class);
+        $this->expectExceptionMessage('api_key');
+
+        try {
+            Panel::register($this->userData(), ['api_key' => null]);
+        } finally {
+            Http::assertNothingSent();
+        }
     }
 
     public function test_it_always_uses_post_even_with_method_overrides(): void

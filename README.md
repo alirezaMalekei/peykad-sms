@@ -176,14 +176,16 @@ use AlirezaMalekei\PeykadSms\Facades\Wallet as SmsWallet;
 
 ## Registering Users
 
-Use `Panel::register($data)` to register a user through your panel API. Registration always sends a JSON **POST** request and shares `SMS_PANEL_URL` and `SMS_PANEL_API_KEY` with SMS sending. The key is sent in the `Authorization` header.
+Use `Panel::register($data)` to register a user through your panel API. Registration always sends a JSON **POST** request and shares `SMS_PANEL_URL` with SMS sending. Set `USER_REGISTRATION_API_KEY` to use a separate registration key; if it is not set, registration falls back to `SMS_PANEL_API_KEY`. The selected key is sent in the `Authorization` header.
 
 ### Configuration
 
-Set the registration endpoint in your application's `.env`:
+Set the registration endpoint and, optionally, a separate API key in your application's `.env`:
 
 ```dotenv
 PANEL_REGISTRATION_ENDPOINT=/your-registration-endpoint
+# Optional: omit this line to use SMS_PANEL_API_KEY
+USER_REGISTRATION_API_KEY=your-registration-api-key
 ```
 
 Replace the placeholder with your actual API route. Your published `config/sms.php` must include:
@@ -191,10 +193,11 @@ Replace the placeholder with your actual API route. Your published `config/sms.p
 ```php
 'registration' => [
     'endpoint' => env('PANEL_REGISTRATION_ENDPOINT'),
+    'api_key' => env('USER_REGISTRATION_API_KEY', env('SMS_PANEL_API_KEY')),
 ],
 ```
 
-If the config was published before registration was added, add this block to it. No separate API key or HTTP method setting is needed. If your configuration is cached, clear or rebuild it after updating these settings.
+If the config was published before registration was added, add this block to it. The registration key is optional; no HTTP method setting is needed. Key priority is: runtime `api_key` override, configured registration key, then the SMS panel key. The fallback reads the value of `SMS_PANEL_API_KEY`, rather than using its name as a literal key. If your configuration is cached, clear or rebuild it after updating these settings.
 
 ### Usage
 
@@ -262,12 +265,12 @@ Registration previously returned an array. Access the raw response through `$res
 
 ### Runtime overrides
 
-To override the registration endpoint or shared connection settings for one request:
+To override the registration endpoint, base URL or selected API key for one request:
 
 ```php
 $result = Panel::register($data, [
     'endpoint' => '/your-registration-endpoint',
-    'api_key' => $customer->sms_api_key,
+    'api_key' => $customer->registration_api_key,
 ]);
 ```
 

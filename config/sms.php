@@ -17,5 +17,6 @@ return [
     ],
     'registration' => [
         'endpoint' => env('PANEL_REGISTRATION_ENDPOINT'),
+        'api_key'  => env('USER_REGISTRATION_API_KEY', env('SMS_PANEL_API_KEY')),
     ],
 ];

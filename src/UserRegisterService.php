@@ -16,9 +16,10 @@ class UserRegisterService
     public function register(array $data, array $overrides = []): UserRegisterResponse
     {
         $panel = $this->config->get('sms.drivers.panel', []);
-        $config = array_merge($this->config->get('sms.registration', []), [
+        $registration = $this->config->get('sms.registration', []);
+        $config = array_merge($registration, [
             'base_url' => $panel['base_url'] ?? null,
-            'api_key' => $panel['api_key'] ?? null,
+            'api_key' => $registration['api_key'] ?? $panel['api_key'] ?? null,
         ], $overrides);
 
         foreach (['base_url', 'endpoint', 'api_key'] as $key) {
