@@ -45,7 +45,8 @@
             ],
             "aliases": {
                 "Sms": "AlirezaMalekei\\PeykadSms\\Facades\\Sms",
-                "Wallet": "AlirezaMalekei\\PeykadSms\\Facades\\Wallet"
+                "Wallet": "AlirezaMalekei\\PeykadSms\\Facades\\Wallet",
+                "Panel": "AlirezaMalekei\\PeykadSms\\Facades\\Panel"
             }
         }
     },

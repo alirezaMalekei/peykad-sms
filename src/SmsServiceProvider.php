@@ -12,6 +12,7 @@ class SmsServiceProvider extends ServiceProvider
 
         $this->app->singleton('sms', fn ($app) => new SmsManager($app));
         $this->app->singleton('sms.wallet', fn ($app) => new WalletService($app['config']));
+        $this->app->singleton('sms.user-register', fn ($app) => new UserRegisterService($app['config']));
     }
 
     public function boot(): void

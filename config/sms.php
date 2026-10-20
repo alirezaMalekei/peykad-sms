@@ -15,4 +15,7 @@ return [
     'wallet' => [
         'endpoint' => env('SMS_WALLET_ENDPOINT'),
     ],
+    'registration' => [
+        'endpoint' => env('PANEL_REGISTRATION_ENDPOINT'),
+    ],
 ];

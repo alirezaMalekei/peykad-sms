@@ -11,6 +11,7 @@ Send SMS in Laravel with support for multiple drivers. Send single, bulk and sch
 - [Usage](#usage)
 - [The `send` Response](#the-send-response)
 - [Getting the Wallet](#getting-the-wallet)
+- [Registering Users](#registering-users)
 - [Adding a Custom Driver](#adding-a-custom-driver)
 - [Error Handling](#error-handling)
 - [Testing](#testing)
@@ -171,6 +172,119 @@ If a class also imports your own `Wallet` model, alias one of them:
 
 ```php
 use AlirezaMalekei\PeykadSms\Facades\Wallet as SmsWallet;
+```
+
+## Registering Users
+
+Use `Panel::register($data)` to register a user through your panel API. Registration always sends a JSON **POST** request and shares `SMS_PANEL_URL` and `SMS_PANEL_API_KEY` with SMS sending. The key is sent in the `Authorization` header.
+
+### Configuration
+
+Set the registration endpoint in your application's `.env`:
+
+```dotenv
+PANEL_REGISTRATION_ENDPOINT=/your-registration-endpoint
+```
+
+Replace the placeholder with your actual API route. Your published `config/sms.php` must include:
+
+```php
+'registration' => [
+    'endpoint' => env('PANEL_REGISTRATION_ENDPOINT'),
+],
+```
+
+If the config was published before registration was added, add this block to it. No separate API key or HTTP method setting is needed. If your configuration is cached, clear or rebuild it after updating these settings.
+
+### Usage
+
+Pass a user data array to the facade. Validation stays in your project; the package forwards the data without local validation or phone normalization.
+
+```php
+use AlirezaMalekei\PeykadSms\Facades\Panel;
+
+// Values below come from data validated in your project.
+// Include fields relevant to the selected user type; omit unused fields.
+$result = Panel::register([
+    'first_name' => $firstName,
+    'last_name' => $lastName,
+    'phone' => $phone,
+    'email' => $email,
+    'address' => $address,
+    'national_id' => $nationalId,             // Required for individual users
+    'type' => $type,                         // Your API's UserTypeEnum value
+    'company_name' => $companyName,          // Required for legal users
+    'company_phone' => $companyPhone,
+    'company_email' => $companyEmail,
+    'company_address' => $companyAddress,
+    'company_national_id' => $companyNationalId, // Required for legal users
+]);
+```
+
+### Registration fields
+
+The table below documents the API's validation rules. Your project validates the data before calling `Panel::register()`; this package only sends the supplied data.
+
+| Field | Required | Accepted value |
+| --- | --- | --- |
+| `first_name` | No | String or `null`; may be omitted. |
+| `last_name` | No | String or `null`; may be omitted. |
+| `phone` | Yes | String accepted by `ValidPhoneRule`, using `PhonePrefixEnum::fromNumber()` for the prefix. |
+| `email` | No | Valid email address or `null`; may be omitted. |
+| `address` | No | String or `null`; may be omitted. |
+| `national_id` | For `UserTypeEnum::Individual` | Valid Iranian national code (`ir_national_code`). Nullable when not required. |
+| `type` | Yes | A valid backing value of your API's `UserTypeEnum`. |
+| `company_name` | For `UserTypeEnum::Legal` | String when supplied. |
+| `company_phone` | No | Mobile number accepted by `ValidPhoneRule` **or** landline accepted by `ir_phone_area`; may be omitted or `null`. |
+| `company_email` | No | Valid email address or `null`; may be omitted. |
+| `company_address` | No | String or `null`; may be omitted. |
+| `company_national_id` | For `UserTypeEnum::Legal` | Valid Iranian company ID (`ir_company_id`) when supplied. |
+
+Use the actual `Individual` or `Legal` backing value defined by your API for `type`. These enums and custom validation rules belong to your application/API; the package does not provide or execute them. For optional fields without a nullable rule (`company_name` and `company_national_id`), omit unused fields rather than sending `null`.
+
+You can also pass the validated data from your own Form Request:
+
+```php
+$result = Panel::register($request->validated());
+```
+
+### Registration response
+
+Like `Sms::send()`, registration returns a response object. `UserRegisterResponse` provides:
+
+```php
+$result->isSuccessful(); // API success flag (false if absent)
+$result->message();      // API message, or null
+$result->toArray();      // Complete decoded JSON response, including user data
+```
+
+Registration previously returned an array. Access the raw response through `$result->toArray()` when updating existing callers. The `UserRegister::register()` facade returns the same response object.
+
+### Runtime overrides
+
+To override the registration endpoint or shared connection settings for one request:
+
+```php
+$result = Panel::register($data, [
+    'endpoint' => '/your-registration-endpoint',
+    'api_key' => $customer->sms_api_key,
+]);
+```
+
+Supported overrides are `endpoint`, `base_url` and `api_key`. Omitted values use the configured settings; requests always use POST.
+
+### Errors
+
+Missing settings, connection failures, HTTP errors (including validation responses), invalid JSON response shapes, and an API response containing `success: false` throw `SmsException`:
+
+```php
+use AlirezaMalekei\PeykadSms\Exceptions\SmsException;
+
+try {
+    $result = Panel::register($data);
+} catch (SmsException $e) {
+    report($e);
+}
 ```
 
 ## Adding a Custom Driver
