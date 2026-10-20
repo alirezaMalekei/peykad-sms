@@ -3,6 +3,8 @@
 namespace AlirezaMalekei\PeykadSms\Drivers;
 
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Http;
 use AlirezaMalekei\PeykadSms\Exceptions\SmsException;
 use AlirezaMalekei\PeykadSms\Responses\UserRegisterResponse;
@@ -28,6 +30,10 @@ class UserRegisterDriver
         }
 
         $result = $response->json();
+
+        if ($response->status() === 422 && is_array($result)) {
+            throw new HttpResponseException(new JsonResponse($result, 422));
+        }
 
         if ($response->failed() || ! is_array($result) || ($result['success'] ?? true) === false) {
             $reason = is_array($result) ? ($result['message'] ?? $response->body()) : $response->body();

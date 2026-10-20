@@ -278,7 +278,9 @@ Supported overrides are `endpoint`, `base_url` and `api_key`. Omitted values use
 
 ### Errors
 
-Missing settings, connection failures, HTTP errors (including validation responses), invalid JSON response shapes, and an API response containing `success: false` throw `SmsException`:
+When the registration API returns HTTP **422** with a JSON object or array, the package throws Laravel's `HttpResponseException` containing the original response body and status. Laravel returns the API's message and field errors as HTTP 422 to your caller. Let this exception reach Laravel's exception handler; a broad `catch (\Throwable $e)` that converts every exception to HTTP 500 would override this behavior.
+
+Missing settings, connection failures, other HTTP errors, invalid JSON response shapes (including a non-JSON 422 response), and other API responses containing `success: false` throw `SmsException`:
 
 ```php
 use AlirezaMalekei\PeykadSms\Exceptions\SmsException;

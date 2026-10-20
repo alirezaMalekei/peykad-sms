@@ -4,6 +4,8 @@ namespace AlirezaMalekei\PeykadSms\Tests;
 
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
+use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Http;
 use AlirezaMalekei\PeykadSms\Exceptions\SmsException;
 use AlirezaMalekei\PeykadSms\Facades\Panel;
@@ -119,8 +121,12 @@ class PanelRegisterTest extends TestCase
         try {
             Panel::register([]);
             $this->fail('Expected the API validation error.');
-        } catch (SmsException $e) {
-            $this->assertStringContainsString('HTTP 422', $e->getMessage());
+        } catch (HttpResponseException $e) {
+            $this->assertSame(422, $e->getResponse()->getStatusCode());
+            $this->assertSame(
+                ['message' => 'The phone field is required.'],
+                $e->getResponse()->getData(true)
+            );
         }
 
         Http::assertSentCount(1);
@@ -288,9 +294,9 @@ class PanelRegisterTest extends TestCase
         }
     }
 
-    public function test_it_throws_for_authentication_validation_and_server_errors(): void
+    public function test_it_throws_for_authentication_and_server_errors(): void
     {
-        $statuses = [401, 403, 422, 500, 503];
+        $statuses = [401, 403, 500, 503];
         $sequence = Http::sequence();
         foreach ($statuses as $status) {
             $sequence->push(['message' => 'Request rejected'], $status);
@@ -347,12 +353,52 @@ class PanelRegisterTest extends TestCase
         Panel::register($this->userData());
     }
 
-    public function test_structured_error_messages_are_reported_without_a_type_error(): void
+    public function test_it_preserves_validation_messages_errors_and_status_in_a_json_request(): void
     {
-        Http::fake(['*' => Http::response(['message' => ['phone' => ['Invalid number']]], 422)]);
+        $body = [
+            'success' => false,
+            'message' => 'The given data was invalid.',
+            'errors' => [
+                'phone' => ['Invalid number', 'This phone is already registered.'],
+                'company_national_id' => ['Invalid company ID'],
+            ],
+        ];
+        Http::fake(['*' => Http::response($body, 422)]);
+        Route::post('/registration-test', fn () => Panel::register($this->userData()));
+
+        $this->postJson('/registration-test')
+            ->assertStatus(422)
+            ->assertExactJson($body);
+    }
+
+    public function test_it_preserves_a_structured_validation_message_without_reformatting(): void
+    {
+        $body = ['message' => ['phone' => ['Invalid number']]];
+        Http::fake(['*' => Http::response($body, 422)]);
+        Route::post('/registration-test', fn () => Panel::register($this->userData()));
+
+        $this->postJson('/registration-test')
+            ->assertStatus(422)
+            ->assertExactJson($body);
+    }
+
+    public function test_it_preserves_validation_errors_when_the_message_is_missing(): void
+    {
+        $body = ['errors' => ['email' => ['Invalid email']]];
+        Http::fake(['*' => Http::response($body, 422)]);
+        Route::post('/registration-test', fn () => Panel::register($this->userData()));
+
+        $this->postJson('/registration-test')
+            ->assertStatus(422)
+            ->assertExactJson($body);
+    }
+
+    public function test_invalid_json_with_status_422_remains_a_registration_exception(): void
+    {
+        Http::fake(['*' => Http::response('invalid JSON', 422)]);
 
         $this->expectException(SmsException::class);
-        $this->expectExceptionMessage('Invalid number');
+        $this->expectExceptionMessage('HTTP 422');
 
         Panel::register($this->userData());
     }
