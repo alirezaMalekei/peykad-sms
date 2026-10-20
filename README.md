@@ -261,6 +261,155 @@ $result->message();      // API message, or null
 $result->toArray();      // Complete decoded JSON response, including user data
 ```
 
+The successful API response contains the registered user, developer credentials and selected panel under `data`. The example below uses placeholder personal data and credentials and shows one entry in `user.panels`; that array can contain multiple panels.
+
+```json
+{
+    "success": true,
+    "message": "اطلاعات کاربر/شرکت ثبت شد",
+    "data": {
+        "user": {
+            "id": 41,
+            "first_name": "Example",
+            "last_name": "User",
+            "full_name": "Example User",
+            "type": "individual",
+            "national_id": 1234567890,
+            "phone": 9120000000,
+            "otp": 1234,
+            "address": "Example address",
+            "email": "user@example.test",
+            "status": "verified",
+            "reject_reason": null,
+            "remember_token": null,
+            "panels": [
+                {
+                    "id": 34,
+                    "name": "Example Panel",
+                    "code": 61605,
+                    "admin_id": 41,
+                    "is_main": 1,
+                    "is_active": 1,
+                    "is_trusted": 0,
+                    "created_at": "2026-04-26T08:52:06.000000Z",
+                    "admin_panel_name": "Example User / Example Panel / 61605",
+                    "wallet": {
+                        "id": 34,
+                        "balance": 6000,
+                        "panel_id": 34
+                    },
+                    "admin": {
+                        "id": 41,
+                        "first_name": "Example",
+                        "last_name": "User",
+                        "full_name": "Example User",
+                        "type": "individual",
+                        "national_id": 1234567890,
+                        "phone": 9120000000,
+                        "otp": 1234,
+                        "address": "Example address",
+                        "email": "user@example.test",
+                        "status": "verified",
+                        "reject_reason": null,
+                        "remember_token": null
+                    }
+                }
+            ],
+            "legal_entity": null
+        },
+        "developer": {
+            "id": 10,
+            "api_name": "Example App",
+            "api_usage": "send_sms",
+            "api_key": "your-generated-developer-api-key",
+            "user_id": 41,
+            "panel_id": 34,
+            "is_active": 1,
+            "user": {
+                "id": 41,
+                "first_name": "Example",
+                "last_name": "User",
+                "full_name": "Example User",
+                "type": "individual",
+                "national_id": 1234567890,
+                "phone": 9120000000,
+                "otp": 1234,
+                "address": "Example address",
+                "email": "user@example.test",
+                "status": "verified",
+                "reject_reason": null,
+                "remember_token": null
+            }
+        },
+        "panel": {
+            "id": 34,
+            "name": "Example Panel",
+            "code": 61605,
+            "admin_id": 41,
+            "is_main": 1,
+            "is_active": 1,
+            "is_trusted": 0,
+            "created_at": "2026-04-26T08:52:06.000000Z",
+            "admin_panel_name": "Example User / Example Panel / 61605",
+            "wallet": {
+                "id": 34,
+                "balance": 6000,
+                "panel_id": 34
+            },
+            "admin": {
+                "id": 41,
+                "first_name": "Example",
+                "last_name": "User",
+                "full_name": "Example User",
+                "type": "individual",
+                "national_id": 1234567890,
+                "phone": 9120000000,
+                "otp": 1234,
+                "address": "Example address",
+                "email": "user@example.test",
+                "status": "verified",
+                "reject_reason": null,
+                "remember_token": null
+            }
+        }
+    }
+}
+```
+
+| Response path | Contents |
+| --- | --- |
+| `success` | Whether registration succeeded. |
+| `message` | The API's registration message. |
+| `data.user` | Registered user details, associated `panels` and `legal_entity` (null in this individual-user example). |
+| `data.user.panels` | Panels associated with the user; each panel includes its wallet and admin details. |
+| `data.developer` | Developer record, including the generated `api_key`, user/panel IDs and nested user details. |
+| `data.panel` | Selected panel, including its `wallet` and `admin`. |
+| `data.panel.wallet.balance` | Balance of the selected panel's wallet. |
+
+Access these values through the response object's `toArray()` method:
+
+```php
+$result = Panel::register($userData);
+
+if ($result->isSuccessful()) {
+    $response = $result->toArray();
+    $message = $result->message();
+
+    $user = $response['data']['user'];
+    $developer = $response['data']['developer'];
+    $panel = $response['data']['panel'];
+
+    $userId = $user['id'];
+    $panels = $user['panels'];
+    $legalEntity = $user['legal_entity'];
+    $apiKey = $developer['api_key'];
+    $panelId = $panel['id'];
+    $balance = $panel['wallet']['balance'];
+}
+```
+
+The returned `data.developer.api_key` belongs to the developer record. It is separate from the configured key used to authorize the registration request; the package does not automatically replace your configured API keys.
+
 Registration previously returned an array. Access the raw response through `$result->toArray()` when updating existing callers. The `UserRegister::register()` facade returns the same response object.
 
 ### Runtime overrides
@@ -279,6 +428,29 @@ Supported overrides are `endpoint`, `base_url` and `api_key`. Omitted values use
 ### Errors
 
 When the registration API returns HTTP **422** with a JSON object or array, the package throws Laravel's `HttpResponseException` containing the original response body and status. Laravel returns the API's message and field errors as HTTP 422 to your caller. Let this exception reach Laravel's exception handler; a broad `catch (\Throwable $e)` that converts every exception to HTTP 500 would override this behavior.
+
+#### Validation errors (HTTP 422)
+
+For example, when `phone` and `type` are missing, the registration API returns HTTP **422** with this JSON body:
+
+```json
+{
+    "success": false,
+    "message": "خطای اعتبارسنجی رخ داده‌است",
+    "errors": {
+        "phone": [
+            "فیلد شماره تلفن همراه الزامی است"
+        ],
+        "type": [
+            "فیلد نوع الزامی است"
+        ]
+    }
+}
+```
+
+The package preserves `success: false`, the Persian `message`, and every field's message array under `errors`. The calling client can display the general message and the individual `errors.phone` and `errors.type` messages.
+
+On this validation failure, `Panel::register()` throws `HttpResponseException` rather than returning a `UserRegisterResponse`. Laravel's exception handler sends the original JSON body with status 422; no local validation is added by this package.
 
 Missing settings, connection failures, other HTTP errors, invalid JSON response shapes (including a non-JSON 422 response), and other API responses containing `success: false` throw `SmsException`:
 
