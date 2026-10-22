@@ -24,13 +24,18 @@ Send SMS in Laravel with support for multiple drivers. Send single, bulk and sch
 | 10.x    | 8.1 - 8.4 |
 | 11.x    | 8.2+      |
 | 12.x    | 8.2+      |
+| 13.x    | 8.3+      |
 
 ## Installation
+
+In a fresh Laravel 13 application, use PHP 8.3 or newer and run the commands below. The same commands apply to the other supported Laravel versions.
 
 ```bash
 composer require alireza_malekei/peykad-sms
 php artisan vendor:publish --tag=sms-config
 ```
+
+Laravel automatically discovers the package's service provider and facade aliases; no manual registration is needed.
 
 ## Getting an API Key
 
