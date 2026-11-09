@@ -142,7 +142,16 @@ $result->message();       // 'success'
 $result->trackingCode();  // tracking code
 $result->toArray();       // raw API response
 ```
+The successful API response:
 
+```json
+{
+  "success": true,
+  "message": "success",
+  "tracking_code": "SXSVfJLXe6bI0ZYtmJxXGhd7JwOnRvOU",
+  "balance": 9990350
+}
+```
 If sending fails (an HTTP error, or `success` is `false`), an `SmsException` is thrown.
 
 ## Getting the Wallet
@@ -170,7 +179,27 @@ $wallet->toArray();              // the wallet record
 $wallet->get('panel.name');      // a single field (dot notation supported)
 $wallet->raw();                  // raw API response (includes success, message, data)
 ```
-
+```json
+{
+    "success": true,
+    "message": "کیف پول دریافت شد",
+    "data": {
+        "id": 258,
+        "balance": 9956140,
+        "panel_id": 258,
+        "panel": {
+            "id": 258,
+            "name": "example",
+            "code": 13830,
+            "admin_id": 258,
+            "is_main": 1,
+            "is_active": 1,
+            "is_trusted": 1,
+            "created_at": "2026-02-05T09:42:28.000000Z"
+        }
+    }
+}
+```
 An `SmsException` is thrown if the endpoint is not configured, the request fails or times out, the API returns `success: false`, or the wallet record is not found in the response.
 
 If a class also imports your own `Wallet` model, alias one of them:

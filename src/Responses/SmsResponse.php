@@ -8,6 +8,7 @@ class SmsResponse
         private bool $success,
         private ?string $message = null,
         private ?string $trackingCode = null,
+        private ?string $balance = null,
         private array $raw = [],
     ) {}
 
@@ -18,6 +19,7 @@ class SmsResponse
             success:      (bool) ($data['success'] ?? false),
             message:      $data['message'] ?? null,
             trackingCode: $data['tracking_code'] ?? null,
+            balance:      $data['balance'] ?? null,
             raw:          $data,
         );
     }
@@ -36,6 +38,11 @@ class SmsResponse
     public function trackingCode(): ?string
     {
         return $this->trackingCode;
+    }
+
+    public function balance(): ?string
+    {
+        return $this->balance;
     }
 
     /** پاسخ خام ای‌پی‌آی */
