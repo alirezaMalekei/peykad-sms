@@ -140,6 +140,7 @@ $result = Sms::send('09138332910', 'Hello');
 $result->isSuccessful();  // true
 $result->message();       // 'success'
 $result->trackingCode();  // tracking code
+$result->balance();       // balance
 $result->toArray();       // raw API response
 ```
 The successful API response:
